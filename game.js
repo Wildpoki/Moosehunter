@@ -111,6 +111,30 @@ const mtlLoader = new THREE.MTLLoader(loadingManager);
 let rifle = null;
 let isModelLoading = false;
 
+// Configure loading manager
+loadingManager.onProgress = function(url, itemsLoaded, itemsTotal) {
+    const progressBar = document.getElementById('loadingProgress');
+    if (progressBar) {
+        const progress = (itemsLoaded / itemsTotal) * 100;
+        progressBar.style.width = `${progress}%`;
+    }
+};
+
+loadingManager.onLoad = function() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) {
+        loadingScreen.style.display = 'none';
+    }
+};
+
+loadingManager.onError = function(url) {
+    console.error('Error loading:', url);
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) {
+        loadingScreen.innerHTML = '<h2 style="color: red;">Error loading game assets. Please refresh the page.</h2>';
+    }
+};
+
 // Add at the top with other state variables
 let audioInitialized = false;
 
@@ -2586,5 +2610,22 @@ function initGame() {
     thanksButton.style.display = 'none';
 }
 
-// Start the game initialization
-initGame();
+// Start loading assets and initialize game
+document.addEventListener('DOMContentLoaded', function() {
+    // Show loading screen
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) {
+        loadingScreen.style.display = 'flex';
+    }
+
+    // Initialize game after all assets are loaded
+    loadingManager.onLoad = function() {
+        if (loadingScreen) {
+            loadingScreen.style.display = 'none';
+        }
+        initGame();
+    };
+
+    // Start loading assets
+    initGame();
+});
