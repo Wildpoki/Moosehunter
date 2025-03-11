@@ -1405,7 +1405,10 @@ function shoot() {
         return;
     }
 
-    console.log('Shot fired');
+    // Update shot count before checking hit
+    scoreSystem.shotsTotal++;
+    console.log('Shot fired - Total shots:', scoreSystem.shotsTotal);
+
     playShootSound();
     rifleState.ammoInMag--;
     rifleState.isBoltAction = true;
@@ -1442,6 +1445,9 @@ function shoot() {
         const intersects = raycaster.intersectObjects(meshes);
         if (intersects.length > 0) {
             hit = true;
+            scoreSystem.shotsHit++;
+            console.log('Shot hit - Total hits:', scoreSystem.shotsHit);
+            
             const killed = mooseManager.handleShot(moose, intersects[0], camera.position);
             
             if (killed) {
@@ -1466,7 +1472,7 @@ function shoot() {
             } else {
                 debug.log('Moose wounded and running!');
             }
-                break;
+            break;
         }
     }
     
@@ -1476,12 +1482,6 @@ function shoot() {
 
     debug.log(`Ammo remaining: ${rifleState.ammoInMag}`);
     lastShotTime = performance.now(); // Update last shot time
-    
-    scoreSystem.shotsTotal++;
-    
-    if (hit) {
-        scoreSystem.shotsHit++;
-    }
 }
 
 // Reload function
@@ -1987,7 +1987,7 @@ function setGameState(state) {
         case gameState.WIN_SCREEN:
             winScreenOverlay.style.display = 'flex';
             const grade = scoreSystem.calculateGrade();
-            const accuracy = (scoreSystem.shotsHit / scoreSystem.shotsTotal * 100).toFixed(1);
+            const accuracy = scoreSystem.shotsTotal > 0 ? (scoreSystem.shotsHit / scoreSystem.shotsTotal * 100).toFixed(1) : '0.0';
             
             // Update the win screen with metrics
             document.getElementById('gradeDisplay').textContent = grade;
@@ -1998,6 +1998,15 @@ function setGameState(state) {
                 <div>Kill Distance: ${scoreSystem.killDistance.toFixed(1)}m</div>
                 <div>Time: ${scoreSystem.timeElapsed.toFixed(1)}s</div>
             `;
+            
+            console.log('Win screen stats:', {
+                grade,
+                accuracy,
+                shotsTotal: scoreSystem.shotsTotal,
+                shotsHit: scoreSystem.shotsHit,
+                killDistance: scoreSystem.killDistance,
+                timeElapsed: scoreSystem.timeElapsed
+            });
             
             playVictorySound();
             break;
@@ -2409,7 +2418,7 @@ winScreenOverlay.innerHTML = `
         </div>
         
         <div style="margin-top: 30px;">
-            <button onclick="restartGame(); setGameState(gameState.PLAYING);" style="
+            <button id="huntAgainButton" style="
                 padding: 15px 32px;
                 font-size: 24px;
                 background-color: #4CAF50;
@@ -2421,7 +2430,7 @@ winScreenOverlay.innerHTML = `
                 margin: 10px;
                 min-width: 200px;
             ">Hunt Again</button>
-            <button onclick="setGameState(gameState.MENU);" style="
+            <button id="backToMenuButton" style="
                 padding: 15px 32px;
                 font-size: 24px;
                 background-color: #4CAF50;
@@ -2437,6 +2446,20 @@ winScreenOverlay.innerHTML = `
     </div>
 `;
 document.body.appendChild(winScreenOverlay);
+
+// Add event listeners for win screen buttons
+const huntAgainButton = document.getElementById('huntAgainButton');
+const backToMenuButton = document.getElementById('backToMenuButton');
+
+huntAgainButton.addEventListener('click', () => {
+    restartGame();
+    setGameState(gameState.PLAYING);
+    renderer.domElement.requestPointerLock();
+});
+
+backToMenuButton.addEventListener('click', () => {
+    setGameState(gameState.MENU);
+});
 
 // Add function to play victory sound
 function playVictorySound() {
