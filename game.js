@@ -109,8 +109,8 @@ const sensitivity = 0.002; // Adjust this value to change mouse sensitivity
 
 // Add required loaders
 const loadingManager = new THREE.LoadingManager();
-const objLoader = new THREE.OBJLoader(loadingManager);
-const mtlLoader = new THREE.MTLLoader(loadingManager);
+const objLoader = new OBJLoader(loadingManager);
+const mtlLoader = new MTLLoader(loadingManager);
 
 // Loading state
 let rifle = null;
