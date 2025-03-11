@@ -1,0 +1,25 @@
+{
+  "name": "moosehunter",
+  "version": "1.0.0",
+  "description": "A 3D browser-based hunting game where you track and hunt moose in a detailed forest environment",
+  "main": "game.js",
+  "scripts": {
+    "start": "http-server -c-1",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "game",
+    "3d",
+    "hunting",
+    "threejs",
+    "webgl"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.128.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+} 
