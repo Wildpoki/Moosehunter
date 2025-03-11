@@ -1,3 +1,8 @@
+// Import Three.js and required loaders
+import * as THREE from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+
 // Scene setup
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -198,12 +203,23 @@ function loadRifleModel() {
 // Add camera to scene first
 scene.add(camera);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// Optimize renderer settings
+const renderer = new THREE.WebGLRenderer({ 
+    antialias: true,
+    powerPreference: "high-performance",
+    precision: "mediump", // Use medium precision for better performance
+    depth: true,
+    stencil: false // Disable stencil buffer if not needed
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false; // Only update shadows when necessary
+renderer.physicallyCorrectLights = false;
 renderer.domElement.style.position = 'fixed';
 renderer.domElement.style.top = '0';
 renderer.domElement.style.left = '0';
@@ -1602,66 +1618,117 @@ renderer.domElement.addEventListener('mousemove', (event) => {
 camera.position.set(0, 2, 0);  // Lower height for better perspective
 camera.lookAt(0, 2, -1);  // Look slightly forward
 
-// Remove the old floor code and add new detailed terrain
-// Forest floor with natural terrain
-function createDetailedTerrain() {
-    const terrainGroup = new THREE.Group();
-
-    // Create base terrain with reduced resolution
-    const terrainSize = 1000;
-    const resolution = 100; // Reduced from 200 for better performance
-    const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, resolution, resolution);
+// Optimize forest creation
+function createForest() {
+    const treeCount = Math.min(100, Math.floor(50 + (window.innerWidth * window.innerHeight) / 100000));
+    const forestRadius = 400;
     
-    // Generate height map using simplified noise
-    const vertices = geometry.attributes.position.array;
-    for (let i = 0; i < vertices.length; i += 3) {
-        const x = vertices[i];
-        const z = vertices[i + 2];
-        
-        // Simplified height calculation
-        let height = (Math.cos(x * 0.005) + Math.sin(z * 0.005)) * 0.5;
-        
-        // Smooth out the center area for player spawn
-        const distanceFromCenter = Math.sqrt(x * x + z * z);
-        const smoothing = Math.max(0, 1 - Math.pow(50 / distanceFromCenter, 2));
-        height *= smoothing;
-        
-        vertices[i + 1] = Math.max(0, height);
-    }
-
-    // Update normals for proper lighting
-    geometry.computeVertexNormals();
-
-    // Create terrain material with optimized settings
-    const terrainMaterial = new THREE.MeshStandardMaterial({
-        color: 0x355e3b,
+    // Create template geometries and materials
+    const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 12, 6);
+    const trunkMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4d2926,
         roughness: 0.9,
-        metalness: 0.1,
-        flatShading: true // Use flat shading for better performance
+        metalness: 0.1
+    });
+    
+    const foliageGeometry = new THREE.ConeGeometry(3, 7, 6);
+    const foliageMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2d5a27,
+        roughness: 1,
+        metalness: 0
     });
 
-    const terrain = new THREE.Mesh(geometry, terrainMaterial);
-    terrain.rotation.x = -Math.PI / 2;
-    terrain.receiveShadow = true;
-    terrain.castShadow = false; // Disable terrain shadow casting for performance
-    terrainGroup.add(terrain);
+    // Use InstancedMesh for better performance
+    const trunkInstancedMesh = new THREE.InstancedMesh(trunkGeometry, trunkMaterial, treeCount);
+    const foliageInstancedMesh = new THREE.InstancedMesh(foliageGeometry, foliageMaterial, treeCount);
 
-    // Add a simple ground plane underneath
-    const groundPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(terrainSize * 1.5, terrainSize * 1.5),
-        new THREE.MeshStandardMaterial({
-            color: 0x355e3b,
-            roughness: 1,
-            metalness: 0
-        })
-    );
-    groundPlane.rotation.x = -Math.PI / 2;
-    groundPlane.position.y = -0.1;
-    groundPlane.receiveShadow = true;
-    terrainGroup.add(groundPlane);
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
 
-    return terrainGroup;
+    // Place trees with optimized distribution
+    for (let i = 0; i < treeCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.sqrt(Math.random()) * forestRadius;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        
+        const treeScale = 0.8 + Math.random() * 0.4;
+        position.set(x, 6 * treeScale, z);
+        quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2);
+        scale.set(treeScale, treeScale, treeScale);
+        
+        matrix.compose(position, quaternion, scale);
+        trunkInstancedMesh.setMatrixAt(i, matrix);
+        
+        position.y += 7 * treeScale;
+        matrix.compose(position, quaternion, scale);
+        foliageInstancedMesh.setMatrixAt(i, matrix);
+    }
+
+    trunkInstancedMesh.castShadow = true;
+    trunkInstancedMesh.receiveShadow = true;
+    foliageInstancedMesh.castShadow = true;
+    foliageInstancedMesh.receiveShadow = true;
+
+    scene.add(trunkInstancedMesh);
+    scene.add(foliageInstancedMesh);
 }
+
+// Create terrain variable
+let terrain;
+
+// Initialize the game
+function initGame() {
+    // Create and add terrain first
+    terrain = createDetailedTerrain();
+    scene.add(terrain);
+
+    // Create the forest
+    createForest();
+    
+    // Load initial rifle model
+    loadRifleModel();
+    
+    // Spawn initial moose
+    mooseManager.spawnMoose();
+    
+    // Start the animation loop
+    animate();
+    
+    // Ensure we start in menu state with proper visibility
+    currentGameState = gameState.MENU;
+    setGameState(gameState.MENU);
+    
+    // Make sure menu is visible
+    menuOverlay.style.display = 'flex';
+    playButton.style.display = 'block';
+    restartButton.style.display = 'block';
+    tutorialButton.style.display = 'block';
+    resumeButton.style.display = 'none';
+    thanksButton.style.display = 'none';
+}
+
+// Start loading assets and initialize game
+document.addEventListener('DOMContentLoaded', function() {
+    // Show loading screen
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) {
+        loadingScreen.style.display = 'flex';
+    }
+
+    // Initialize game after all assets are loaded
+    loadingManager.onLoad = function() {
+        if (loadingScreen) {
+            loadingScreen.style.display = 'none';
+        }
+        initGame();
+    };
+
+    // Start loading assets
+    initGame();
+});
 
 // Update grass clump creation for better appearance
 function createGrassClump() {
@@ -2463,131 +2530,50 @@ document.getElementById('backFromCreditsBtn').addEventListener('click', () => {
     menuOverlay.style.display = 'flex';
 });
 
-// Create forest with trees
-function createForest() {
-    const treeCount = 100; // Reduced from higher number if it was
-    const forestRadius = 400;
+// Optimize terrain creation
+function createDetailedTerrain() {
+    const terrainGroup = new THREE.Group();
+    const terrainSize = 1000;
+    const resolution = Math.min(100, Math.floor(50 + (window.innerWidth * window.innerHeight) / 100000));
     
-    // Create template geometries and materials
-    const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 12, 6); // Reduced polygon count
-    const trunkMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4d2926,
+    const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, resolution, resolution);
+    
+    const vertices = geometry.attributes.position.array;
+    for (let i = 0; i < vertices.length; i += 3) {
+        const x = vertices[i];
+        const z = vertices[i + 2];
+        let height = (Math.cos(x * 0.005) + Math.sin(z * 0.005)) * 0.5;
+        const distanceFromCenter = Math.sqrt(x * x + z * z);
+        const smoothing = Math.max(0, 1 - Math.pow(50 / distanceFromCenter, 2));
+        vertices[i + 1] = Math.max(0, height * smoothing);
+    }
+
+    geometry.computeVertexNormals();
+
+    const terrainMaterial = new THREE.MeshStandardMaterial({
+        color: 0x355e3b,
         roughness: 0.9,
-        metalness: 0.1
-    });
-    
-    const foliageGeometry = new THREE.ConeGeometry(3, 7, 6); // Reduced polygon count
-    const foliageMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2d5a27,
-        roughness: 1,
-        metalness: 0
+        metalness: 0.1,
+        flatShading: true
     });
 
-    // Create instanced mesh for trunks
-    const trunkInstancedMesh = new THREE.InstancedMesh(
-        trunkGeometry,
-        trunkMaterial,
-        treeCount
+    const terrain = new THREE.Mesh(geometry, terrainMaterial);
+    terrain.rotation.x = -Math.PI / 2;
+    terrain.receiveShadow = true;
+    terrainGroup.add(terrain);
+
+    const groundPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(terrainSize * 1.5, terrainSize * 1.5),
+        new THREE.MeshStandardMaterial({
+            color: 0x355e3b,
+            roughness: 1,
+            metalness: 0
+        })
     );
+    groundPlane.rotation.x = -Math.PI / 2;
+    groundPlane.position.y = -0.1;
+    groundPlane.receiveShadow = true;
+    terrainGroup.add(groundPlane);
 
-    // Create instanced mesh for foliage
-    const foliageInstancedMesh = new THREE.InstancedMesh(
-        foliageGeometry,
-        foliageMaterial,
-        treeCount
-    );
-
-    // Matrix for transformations
-    const matrix = new THREE.Matrix4();
-    const position = new THREE.Vector3();
-    const quaternion = new THREE.Quaternion();
-    const scale = new THREE.Vector3();
-
-    // Place trees
-    for (let i = 0; i < treeCount; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.sqrt(Math.random()) * forestRadius; // Better distribution
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        const groundHeight = getHeightAtPosition(x, z);
-        
-        // Random scale between 0.8 and 1.2
-        const treeScale = 0.8 + Math.random() * 0.4;
-        
-        // Set trunk transform
-        position.set(x, groundHeight + (6 * treeScale), z);
-        quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2);
-        scale.set(treeScale, treeScale, treeScale);
-        matrix.compose(position, quaternion, scale);
-        trunkInstancedMesh.setMatrixAt(i, matrix);
-        
-        // Set foliage transform
-        position.y += 7 * treeScale; // Move foliage to top of trunk
-        matrix.compose(position, quaternion, scale);
-        foliageInstancedMesh.setMatrixAt(i, matrix);
-    }
-
-    // Enable shadows
-    trunkInstancedMesh.castShadow = true;
-    trunkInstancedMesh.receiveShadow = true;
-    foliageInstancedMesh.castShadow = true;
-    foliageInstancedMesh.receiveShadow = true;
-
-    // Add to scene
-    scene.add(trunkInstancedMesh);
-    scene.add(foliageInstancedMesh);
+    return terrainGroup;
 }
-
-// Create terrain variable
-let terrain;
-
-// Initialize the game
-function initGame() {
-    // Create and add terrain first
-    terrain = createDetailedTerrain();
-    scene.add(terrain);
-
-    // Create the forest
-    createForest();
-    
-    // Load initial rifle model
-    loadRifleModel();
-    
-    // Spawn initial moose
-    mooseManager.spawnMoose();
-    
-    // Start the animation loop
-    animate();
-    
-    // Ensure we start in menu state with proper visibility
-    currentGameState = gameState.MENU;
-    setGameState(gameState.MENU);
-    
-    // Make sure menu is visible
-    menuOverlay.style.display = 'flex';
-    playButton.style.display = 'block';
-    restartButton.style.display = 'block';
-    tutorialButton.style.display = 'block';
-    resumeButton.style.display = 'none';
-    thanksButton.style.display = 'none';
-}
-
-// Start loading assets and initialize game
-document.addEventListener('DOMContentLoaded', function() {
-    // Show loading screen
-    const loadingScreen = document.getElementById('loadingScreen');
-    if (loadingScreen) {
-        loadingScreen.style.display = 'flex';
-    }
-
-    // Initialize game after all assets are loaded
-    loadingManager.onLoad = function() {
-        if (loadingScreen) {
-            loadingScreen.style.display = 'none';
-        }
-        initGame();
-    };
-
-    // Start loading assets
-    initGame();
-});
