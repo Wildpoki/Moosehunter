@@ -224,23 +224,41 @@ scene.background = new THREE.Color(0x87CEEB); // Sky blue
 scene.fog = new THREE.Fog(0x87CEEB, 50, 700); // Update fog distance to match 700m visibility
 
 // Enhanced lighting for better outdoor feel
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Increased ambient light intensity
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
 
-const sunLight = new THREE.DirectionalLight(0xffffeb, 1.2); // Adjusted sun light intensity
-sunLight.position.set(-50, 100, -50); // Adjusted position for better shadows
+const sunLight = new THREE.DirectionalLight(0xffffeb, 1.2);
+sunLight.position.set(-50, 100, -50);
 sunLight.castShadow = true;
-// Optimize shadow map
-sunLight.shadow.mapSize.width = 2048;
-sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.camera.near = 0.5;
-sunLight.shadow.camera.far = 500;
+
+// Optimize shadow map settings for performance
+sunLight.shadow.mapSize.width = 1024; // Reduced from 2048
+sunLight.shadow.mapSize.height = 1024; // Reduced from 2048
+sunLight.shadow.camera.near = 1;
+sunLight.shadow.camera.far = 400; // Reduced from 500
 sunLight.shadow.camera.left = -100;
 sunLight.shadow.camera.right = 100;
 sunLight.shadow.camera.top = 100;
 sunLight.shadow.camera.bottom = -100;
-sunLight.shadow.bias = -0.001; // Add shadow bias to prevent shadow artifacts
+sunLight.shadow.bias = -0.001;
+
+// Optimize shadow camera frustum
+const shadowHelper = new THREE.CameraHelper(sunLight.shadow.camera);
+shadowHelper.visible = false; // Set to true for debugging shadow camera
+scene.add(shadowHelper);
+
 scene.add(sunLight);
+
+// Enable shadow rendering with optimized settings
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false; // Only update shadows when necessary
+renderer.shadowMap.needsUpdate = true;
+
+// Optimize renderer settings
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio
+renderer.physicallyCorrectLights = false; // Disable for better performance
+renderer.powerPreference = "high-performance";
 
 // Add a secondary fill light
 // Enable shadow rendering
@@ -1589,118 +1607,58 @@ camera.lookAt(0, 2, -1);  // Look slightly forward
 function createDetailedTerrain() {
     const terrainGroup = new THREE.Group();
 
-    // Create base terrain with height variations
+    // Create base terrain with reduced resolution
     const terrainSize = 1000;
-    const resolution = 200;
+    const resolution = 100; // Reduced from 200 for better performance
     const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, resolution, resolution);
     
-    // Generate height map using multiple passes of noise
+    // Generate height map using simplified noise
     const vertices = geometry.attributes.position.array;
     for (let i = 0; i < vertices.length; i += 3) {
         const x = vertices[i];
         const z = vertices[i + 2];
         
-        // Start with a base height of 0
-        let height = 0;
-        
-        // Add very subtle rolling hills
-        height += (Math.cos(x * 0.005) + Math.sin(z * 0.005)) * 0.5;
-        
-        // Add small random variations for texture
-        height += (Math.random() - 0.5) * 0.1;
+        // Simplified height calculation
+        let height = (Math.cos(x * 0.005) + Math.sin(z * 0.005)) * 0.5;
         
         // Smooth out the center area for player spawn
         const distanceFromCenter = Math.sqrt(x * x + z * z);
         const smoothing = Math.max(0, 1 - Math.pow(50 / distanceFromCenter, 2));
         height *= smoothing;
         
-        // Ensure minimum height is 0
-        height = Math.max(0, height);
-        
-        vertices[i + 1] = height;
+        vertices[i + 1] = Math.max(0, height);
     }
 
     // Update normals for proper lighting
     geometry.computeVertexNormals();
 
-    // Create terrain material with grass and woods coloration
+    // Create terrain material with optimized settings
     const terrainMaterial = new THREE.MeshStandardMaterial({
-        color: 0x355e3b, // Forest green base color
+        color: 0x355e3b,
         roughness: 0.9,
         metalness: 0.1,
-        vertexColors: true,
-        side: THREE.FrontSide,
-        transparent: false,
-        opacity: 1.0
+        flatShading: true // Use flat shading for better performance
     });
-
-    // Add color variations for natural look
-    const colors = new Float32Array(vertices.length);
-    for (let i = 0; i < vertices.length; i += 3) {
-        const height = vertices[i + 1];
-        const x = vertices[i];
-        const z = vertices[i + 2];
-        
-        // Create base color (grass)
-        const baseColor = new THREE.Color(0x355e3b); // Forest green
-        
-        // Add some random variation to create patches
-        const variation = Math.sin(x * 0.1) * Math.cos(z * 0.1) * 0.2;
-        baseColor.offsetHSL(0, variation, variation);
-        
-        // Slightly darken in lower areas (valleys)
-        baseColor.offsetHSL(0, 0, -height * 0.1);
-        
-        // Add random dark patches for forest floor variation
-        if (Math.random() > 0.7) {
-            baseColor.offsetHSL(0, 0.1, -0.1);
-        }
-        
-        colors[i] = baseColor.r;
-        colors[i + 1] = baseColor.g;
-        colors[i + 2] = baseColor.b;
-    }
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
     const terrain = new THREE.Mesh(geometry, terrainMaterial);
     terrain.rotation.x = -Math.PI / 2;
     terrain.receiveShadow = true;
-    terrain.castShadow = true;
+    terrain.castShadow = false; // Disable terrain shadow casting for performance
     terrainGroup.add(terrain);
 
-    // Add a solid ground plane underneath to prevent any see-through issues
+    // Add a simple ground plane underneath
     const groundPlane = new THREE.Mesh(
         new THREE.PlaneGeometry(terrainSize * 1.5, terrainSize * 1.5),
         new THREE.MeshStandardMaterial({
             color: 0x355e3b,
             roughness: 1,
-            metalness: 0,
-            side: THREE.FrontSide
+            metalness: 0
         })
     );
     groundPlane.rotation.x = -Math.PI / 2;
-    groundPlane.position.y = -0.1; // Slightly below terrain
+    groundPlane.position.y = -0.1;
     groundPlane.receiveShadow = true;
     terrainGroup.add(groundPlane);
-
-    // Add scattered grass patches
-    for (let i = 0; i < 2000; i++) {
-        const grass = createGrassClump();
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 450;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        
-        // Find height at this position
-        const xPos = (x / terrainSize + 0.5) * resolution;
-        const zPos = (z / terrainSize + 0.5) * resolution;
-        const heightIndex = Math.floor(xPos) + Math.floor(zPos) * resolution * 3;
-        const y = vertices[heightIndex + 1];
-        
-        grass.position.set(x, y, z);
-        grass.rotation.y = Math.random() * Math.PI * 2;
-        terrainGroup.add(grass);
-    }
 
     return terrainGroup;
 }
@@ -2507,73 +2465,77 @@ document.getElementById('backFromCreditsBtn').addEventListener('click', () => {
 
 // Create forest with trees
 function createForest() {
-    const treeCount = 100; // Number of trees to create
-    const forestRadius = 400; // Radius of the forest area
+    const treeCount = 100; // Reduced from higher number if it was
+    const forestRadius = 400;
     
-    // Create tree instances
+    // Create template geometries and materials
+    const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 12, 6); // Reduced polygon count
+    const trunkMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4d2926,
+        roughness: 0.9,
+        metalness: 0.1
+    });
+    
+    const foliageGeometry = new THREE.ConeGeometry(3, 7, 6); // Reduced polygon count
+    const foliageMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2d5a27,
+        roughness: 1,
+        metalness: 0
+    });
+
+    // Create instanced mesh for trunks
+    const trunkInstancedMesh = new THREE.InstancedMesh(
+        trunkGeometry,
+        trunkMaterial,
+        treeCount
+    );
+
+    // Create instanced mesh for foliage
+    const foliageInstancedMesh = new THREE.InstancedMesh(
+        foliageGeometry,
+        foliageMaterial,
+        treeCount
+    );
+
+    // Matrix for transformations
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+
+    // Place trees
     for (let i = 0; i < treeCount; i++) {
-        // Calculate random position within forest radius
         const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * forestRadius;
+        const radius = Math.sqrt(Math.random()) * forestRadius; // Better distribution
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
-        
-        // Create tree
-        const treeHeight = 10 + Math.random() * 5; // Random height between 10-15 units
-        const trunkRadius = 0.3 + Math.random() * 0.2; // Random trunk thickness
-        
-        // Create trunk
-        const trunkGeometry = new THREE.CylinderGeometry(trunkRadius, trunkRadius * 1.2, treeHeight, 8);
-        const trunkMaterial = new THREE.MeshStandardMaterial({
-            color: 0x4d2926,
-            roughness: 0.9,
-            metalness: 0.1
-        });
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        
-        // Create foliage (multiple layers for fuller look)
-        const foliageGroup = new THREE.Group();
-        const foliageLayers = 3;
-        for (let j = 0; j < foliageLayers; j++) {
-            const layerHeight = treeHeight * 0.4;
-            const layerRadius = treeHeight * 0.3 * (1 - j * 0.2);
-            const foliageGeometry = new THREE.ConeGeometry(layerRadius, layerHeight, 8);
-            const foliageMaterial = new THREE.MeshStandardMaterial({
-                color: new THREE.Color(0x2d5a27).offsetHSL(0, 0, (Math.random() - 0.5) * 0.1),
-                roughness: 1,
-                metalness: 0
-            });
-            const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-            foliage.position.y = treeHeight * (0.5 + j * 0.2);
-            foliageGroup.add(foliage);
-        }
-        
-        // Create tree group
-        const treeGroup = new THREE.Group();
-        treeGroup.add(trunk);
-        treeGroup.add(foliageGroup);
-        
-        // Position tree
         const groundHeight = getHeightAtPosition(x, z);
-        treeGroup.position.set(x, groundHeight, z);
         
-        // Random rotation
-        treeGroup.rotation.y = Math.random() * Math.PI * 2;
+        // Random scale between 0.8 and 1.2
+        const treeScale = 0.8 + Math.random() * 0.4;
         
-        // Random scale variation
-        const scale = 0.8 + Math.random() * 0.4;
-        treeGroup.scale.set(scale, scale, scale);
+        // Set trunk transform
+        position.set(x, groundHeight + (6 * treeScale), z);
+        quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2);
+        scale.set(treeScale, treeScale, treeScale);
+        matrix.compose(position, quaternion, scale);
+        trunkInstancedMesh.setMatrixAt(i, matrix);
         
-        // Add shadows
-        treeGroup.traverse(object => {
-            if (object instanceof THREE.Mesh) {
-                object.castShadow = true;
-                object.receiveShadow = true;
-            }
-        });
-        
-        scene.add(treeGroup);
+        // Set foliage transform
+        position.y += 7 * treeScale; // Move foliage to top of trunk
+        matrix.compose(position, quaternion, scale);
+        foliageInstancedMesh.setMatrixAt(i, matrix);
     }
+
+    // Enable shadows
+    trunkInstancedMesh.castShadow = true;
+    trunkInstancedMesh.receiveShadow = true;
+    foliageInstancedMesh.castShadow = true;
+    foliageInstancedMesh.receiveShadow = true;
+
+    // Add to scene
+    scene.add(trunkInstancedMesh);
+    scene.add(foliageInstancedMesh);
 }
 
 // Create terrain variable
