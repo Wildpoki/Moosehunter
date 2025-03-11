@@ -2379,78 +2379,101 @@ winScreenOverlay.style.color = 'white';
 winScreenOverlay.style.fontFamily = 'Arial, sans-serif';
 winScreenOverlay.style.padding = '20px';
 winScreenOverlay.style.backdropFilter = 'blur(5px)';
-winScreenOverlay.innerHTML = `
-    <div style="
-        background: rgba(255, 255, 255, 0.1);
-        padding: 40px;
-        border-radius: 15px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(4px);
-        max-width: 800px;
-        width: 90%;
-        text-align: center;
-    ">
-        <h2 style="
-            font-size: 48px;
-            margin-bottom: 30px;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-            letter-spacing: 2px;
-        ">Hunt Complete!</h2>
-        
-        <div id="gradeDisplay" style="
-            font-size: 120px;
-            font-weight: bold;
-            margin: 20px 0;
-            color: #4CAF50;
-            text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
-        "></div>
-        
-        <div style="
-            background: rgba(255, 255, 255, 0.05);
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            font-size: 24px;
-            line-height: 1.6;
-        ">
-            <div id="metricsDisplay"></div>
-        </div>
-        
-        <div style="margin-top: 30px;">
-            <button id="huntAgainButton" style="
-                padding: 15px 32px;
-                font-size: 24px;
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                margin: 10px;
-                min-width: 200px;
-            ">Hunt Again</button>
-            <button id="backToMenuButton" style="
-                padding: 15px 32px;
-                font-size: 24px;
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                margin: 10px;
-                min-width: 200px;
-            ">Back to Menu</button>
-        </div>
-    </div>
-`;
-document.body.appendChild(winScreenOverlay);
 
-// Add event listeners for win screen buttons
-const huntAgainButton = document.getElementById('huntAgainButton');
-const backToMenuButton = document.getElementById('backToMenuButton');
+// Create the win screen content
+const winScreenContent = document.createElement('div');
+winScreenContent.style.background = 'rgba(255, 255, 255, 0.1)';
+winScreenContent.style.padding = '40px';
+winScreenContent.style.borderRadius = '15px';
+winScreenContent.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.3)';
+winScreenContent.style.backdropFilter = 'blur(4px)';
+winScreenContent.style.maxWidth = '800px';
+winScreenContent.style.width = '90%';
+winScreenContent.style.textAlign = 'center';
 
+// Add title
+const winTitle = document.createElement('h2');
+winTitle.textContent = 'Hunt Complete!';
+winTitle.style.fontSize = '48px';
+winTitle.style.marginBottom = '30px';
+winTitle.style.color = 'white';
+winTitle.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.5)';
+winTitle.style.letterSpacing = '2px';
+winScreenContent.appendChild(winTitle);
+
+// Add grade display
+const gradeDisplay = document.createElement('div');
+gradeDisplay.id = 'gradeDisplay';
+gradeDisplay.style.fontSize = '120px';
+gradeDisplay.style.fontWeight = 'bold';
+gradeDisplay.style.margin = '20px 0';
+gradeDisplay.style.color = '#4CAF50';
+gradeDisplay.style.textShadow = '0 0 10px rgba(76, 175, 80, 0.5)';
+winScreenContent.appendChild(gradeDisplay);
+
+// Add metrics display
+const metricsContainer = document.createElement('div');
+metricsContainer.style.background = 'rgba(255, 255, 255, 0.05)';
+metricsContainer.style.padding = '20px';
+metricsContainer.style.borderRadius = '10px';
+metricsContainer.style.margin = '20px 0';
+metricsContainer.style.fontSize = '24px';
+metricsContainer.style.lineHeight = '1.6';
+
+const metricsDisplay = document.createElement('div');
+metricsDisplay.id = 'metricsDisplay';
+metricsContainer.appendChild(metricsDisplay);
+winScreenContent.appendChild(metricsContainer);
+
+// Add buttons container
+const buttonsContainer = document.createElement('div');
+buttonsContainer.style.marginTop = '30px';
+
+// Create Hunt Again button
+const huntAgainButton = document.createElement('button');
+huntAgainButton.id = 'huntAgainButton';
+huntAgainButton.textContent = 'Hunt Again';
+huntAgainButton.style.padding = '15px 32px';
+huntAgainButton.style.fontSize = '24px';
+huntAgainButton.style.backgroundColor = '#4CAF50';
+huntAgainButton.style.color = 'white';
+huntAgainButton.style.border = 'none';
+huntAgainButton.style.borderRadius = '8px';
+huntAgainButton.style.cursor = 'pointer';
+huntAgainButton.style.transition = 'all 0.3s ease';
+huntAgainButton.style.margin = '10px';
+huntAgainButton.style.minWidth = '200px';
+
+// Create Back to Menu button
+const backToMenuButton = document.createElement('button');
+backToMenuButton.id = 'backToMenuButton';
+backToMenuButton.textContent = 'Back to Menu';
+backToMenuButton.style.padding = '15px 32px';
+backToMenuButton.style.fontSize = '24px';
+backToMenuButton.style.backgroundColor = '#4CAF50';
+backToMenuButton.style.color = 'white';
+backToMenuButton.style.border = 'none';
+backToMenuButton.style.borderRadius = '8px';
+backToMenuButton.style.cursor = 'pointer';
+backToMenuButton.style.transition = 'all 0.3s ease';
+backToMenuButton.style.margin = '10px';
+backToMenuButton.style.minWidth = '200px';
+
+// Add hover effects
+[huntAgainButton, backToMenuButton].forEach(button => {
+    button.addEventListener('mouseover', () => {
+        button.style.backgroundColor = '#45a049';
+        button.style.transform = 'translateY(-2px)';
+        button.style.boxShadow = '0 6px 8px rgba(0, 0, 0, 0.2)';
+    });
+    button.addEventListener('mouseout', () => {
+        button.style.backgroundColor = '#4CAF50';
+        button.style.transform = 'translateY(0)';
+        button.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+    });
+});
+
+// Add click handlers
 huntAgainButton.addEventListener('click', () => {
     restartGame();
     setGameState(gameState.PLAYING);
@@ -2460,6 +2483,15 @@ huntAgainButton.addEventListener('click', () => {
 backToMenuButton.addEventListener('click', () => {
     setGameState(gameState.MENU);
 });
+
+// Assemble the buttons
+buttonsContainer.appendChild(huntAgainButton);
+buttonsContainer.appendChild(backToMenuButton);
+winScreenContent.appendChild(buttonsContainer);
+
+// Add the content to the overlay
+winScreenOverlay.appendChild(winScreenContent);
+document.body.appendChild(winScreenOverlay);
 
 // Add function to play victory sound
 function playVictorySound() {
