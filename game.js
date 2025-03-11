@@ -122,10 +122,12 @@ loadingManager.onProgress = function(url, itemsLoaded, itemsTotal) {
     if (progressBar) {
         const progress = (itemsLoaded / itemsTotal) * 100;
         progressBar.style.width = `${progress}%`;
+        console.log(`Loading progress: ${progress.toFixed(1)}%`);
     }
 };
 
 loadingManager.onLoad = function() {
+    console.log('All assets loaded successfully');
     const loadingScreen = document.getElementById('loadingScreen');
     if (loadingScreen) {
         loadingScreen.style.display = 'none';
@@ -136,7 +138,20 @@ loadingManager.onError = function(url) {
     console.error('Error loading:', url);
     const loadingScreen = document.getElementById('loadingScreen');
     if (loadingScreen) {
-        loadingScreen.innerHTML = '<h2 style="color: red;">Error loading game assets. Please refresh the page.</h2>';
+        loadingScreen.innerHTML = `
+            <h2 style="color: red;">Error loading game assets</h2>
+            <p>Failed to load: ${url}</p>
+            <button onclick="location.reload()" style="
+                padding: 15px 32px;
+                font-size: 24px;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                margin-top: 20px;
+            ">Retry</button>
+        `;
     }
 };
 
@@ -1718,15 +1733,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadingScreen.style.display = 'flex';
     }
 
-    // Initialize game after all assets are loaded
-    loadingManager.onLoad = function() {
-        if (loadingScreen) {
-            loadingScreen.style.display = 'none';
-        }
-        initGame();
-    };
-
-    // Start loading assets
+    // Start loading assets and initialize game
     initGame();
 });
 
